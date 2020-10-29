@@ -1,0 +1,23 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1574813366645.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "3835773459",
+    "id" : "65CAFA1",
+    "lastKnownWriteTime" : 1574197685,
+    "last_content_update" : 1574197685,
+    "path" : "~/OneDrive - The University of Texas at Dallas/UTD school works/BA with R/group project/model2.r",
+    "project_path" : null,
+    "properties" : {
+    },
+    "read_only" : false,
+    "read_only_alternatives" : [
+    ],
+    "relative_order" : 4,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_source"
+}

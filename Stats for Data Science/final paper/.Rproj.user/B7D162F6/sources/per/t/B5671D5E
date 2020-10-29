@@ -1,0 +1,26 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1575264622591.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "1561195018",
+    "id" : "B5671D5E",
+    "lastKnownWriteTime" : 1575267686,
+    "last_content_update" : 1575267686988,
+    "path" : "~/OneDrive - The University of Texas at Dallas/UTD school works/Stats for Data Science/final paper/paper_summary.Rmd",
+    "project_path" : "paper_summary.Rmd",
+    "properties" : {
+        "cursorPosition" : "12,72",
+        "scrollLine" : "0",
+        "tempName" : "Untitled1"
+    },
+    "read_only" : false,
+    "read_only_alternatives" : [
+    ],
+    "relative_order" : 7,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_markdown"
+}

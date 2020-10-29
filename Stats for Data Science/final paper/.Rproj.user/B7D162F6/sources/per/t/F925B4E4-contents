@@ -1,0 +1,455 @@
+---
+title: "Final Paper: Google Play Store Apps Rating"
+author: "Hsin Chen"
+date: "12/2/2019"
+output:
+  pdf_document: 
+    fig_caption: yes
+    fig_height: 4
+    number_sections: yes
+fontsize: 12pt
+mainfont: TimesNewRoman
+spacing: 1.5
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Introduction
+
+Similar to Apple App Store, Google Play Store is one of the biggest mobile application stores and has innumerable apps available on it. Many companies, studios, and developers launch their applications on the Google Play Store. They are interested in what designs and strategies can make their products get better ratings and comments, so they can possibly to attract and reach more users. Their questions would be: 
+
+* What are the types, sizes, prices, genres, and categories of the top-rated apps?
+* Is it possible to predict an app’s rating given its other attributes?
+
+The dataset provides information about the features of top-rated apps the pricing strategies, and my purpose is to understand why those apps have high ratings and find an approach to get higher user ratings.
+
+Next, The dataset is obtained from [Kaggle](https://www.kaggle.com/lava18/google-play-store-apps), and it has more than 10,000 web-scraped records of Apps on Google Play Store collected by Lavanya Gupta. The last update date of this dataset is 2019/02/03.
+In order to use the dataset for my purpose, I first transformed and cleaned some fields, e.g. Transforming the Size field to numeric data. The procedure and R code of cleaning and modifying data are shown in **Appendix 7.1**.
+
+
+The fields in the dataset after data cleaning and processing:
+
+Fields' Name | Fields' Description | Data Type
+------------ | ------------------- | ----------------------
+App          | The name of the app | Categoric
+Category     | The category which the app belongs to | Categoric
+Rating       | Overall user rating of the app | Numeric
+Reviews      | The number of user reviews for the app | Numeric
+Size         | The size of the app | Numeric
+Installs     | Number of user downloads/installs for the app | Numeric
+Price        | Price of the app | Numeric
+Content Rating | Age group which the app is targeted at | Categoric
+Genres       | An app can belong to multiple genres | Categoric
+DaysFromLastUpdate | Numbers of days from the date of last update | Numeric
+
+In the following sections, the research problems and solutions will be addressed. Then, the process of the analysis will be explained and concluded.
+
+
+# Problem Statement
+
+The ultimate goal is to get insights into the features of top-rated applications and understand what makes an application have a higher user rating. Therefore, the information can be utilized to enhance an application's user rating. 
+
+
+# Solution
+
+To understand the features of the top-rated applications or what factors affect user ratings, I will do exploratory data analysis first. Using graphs and plots to show the distribution of relationships of attributes can help understand more about the data and have a rough concept about the research.
+Next, I will use multiple linear regression models to analyze and interpret the data. Manually selecting independent variables will be attempted first, and I will apply 3 variable selection techniques for choosing variables. Inferential tools for multiple regression such as confidence intervals will also be used in the research.
+
+# Analysis
+
+## Exploratory Anaylsis
+Several techniques and tools will be utilized to do exploratory data analysis and help me know more about the data. First, I plot a bar chart to visualize the number of applications in each category.
+
+```{r category_barplot, echo=FALSE, warning=FALSE, message=FALSE, fig.width = 6, fig.height = 4.2}
+app.df <- read.csv("apps.csv")
+library(ggplot2)
+catg.barplot <-ggplot(data=app.df, aes(x=Category)) +
+  geom_bar(stat="count", fill="steelblue") + ggtitle("Bar chart of categories") +
+  theme(axis.text.x=element_text(angle=50, hjust = 1)); catg.barplot
+```
+
+From the bar chart above, it can be seen that _Family_, _Game_, and _Tools_ are the top 3 categories that have the most applications.
+
+
+```{r rating_histogram, echo=FALSE, warning=FALSE, message=FALSE}
+# Histogram of rating
+hist.rating <- ggplot(data=app.df, aes(x=Rating)) +
+  geom_histogram(stat="bin", fill="steelblue") + 
+  ggtitle("Histogram of Rating"); hist.rating
+```
+
+From the histogram above, it shows that most applications' user rating is above 4.0.
+
+```{r rating v.s. category boxplot, echo=FALSE, warning=FALSE, message=FALSE}
+# boxplot of rating vs category
+boxp.rating.catg <- ggplot(data=app.df, aes(x=Category,y=Rating)) +
+  geom_boxplot() + ggtitle("Box Plot of Rating v.s. Category") +
+  theme(axis.text.x=element_text(angle=80, hjust = 1)); boxp.rating.catg
+```
+
+Constructing a box plot can show whether some categories tend to have higher ratings than others. From the box plot above, it seems that the distribution of each category is similar; no obvious differences between categories.
+
+```{r rating v.s. price scatter plot, echo=FALSE, message=FALSE, warning=FALSE, fig.height = 3.8}
+# scatterplot of rating vs price
+scat.rating.price <- ggplot(data=app.df, aes(x=Price,y=Rating)) +
+  geom_point() + ggtitle("Scatter Plot of Rating v.s. Price") +
+  xlab("Price ($)"); scat.rating.price 
+```
+
+The scatter plot above shows that almost all applications' prices are below \$50; however, there are some applications that cost about \$400, which is extremely expensive. The non-free applications don't necessarily have higher or lower ratings than free applications, but most of the non-free ones have user ratings higher than 3.5.
+
+
+```{r scatter plot of rating vs reviews, echo=FALSE, warning=FALSE, message=FALSE, fig.height = 3.8}
+# scatter plot of rating vs reviews
+scat.rating.review <- ggplot(data=app.df, aes(x=Reviews,y=Rating)) +
+  geom_point() + ggtitle("Scatter Plot of Rating v.s. Reviews") ; scat.rating.review 
+```
+
+From the scatter plot above, it can be observed that most applications' number of reviews are below 20,000,000. Most applications that have user reviews have good user ratings (above 4.0).
+
+```{r scatter plot of rating vs installs, echo=FALSE, warning=FALSE, message=FALSE}
+# scatter plot of rating vs installs
+scat.rating.install <- ggplot(data=app.df, aes(x=Installs,y=Rating)) +
+  geom_point() + ggtitle("Scatter Plot of Rating v.s. Installs") + 
+  theme(axis.text.x=element_text(angle=50, hjust = 1)); scat.rating.install
+```
+
+For the Installs field in the dataset, because it was originally a field with factor levels, e.g. 500+, 1000+, 5000+, etc., I transformed those factor levels into a numeric threshold of the number of installs. For example, the points on the line of (Installs = 500,000,000) actually mean the numbers of installs are between 500,000,000 and the next level, which is 1,000,000,000. From this scatter plot, I can tell that most popular applications (Installs > 100,000,000) have user ratings higher than 3.5, and the majority of the ratings are higher than 4.0.
+
+```{r scatter plot of rating vs size, echo=FALSE, warning=FALSE, message=FALSE}
+# scatter plot of rating vs size
+scat.rating.size <- ggplot(data=app.df, aes(x=Size,y=Rating)) +
+  geom_point() + ggtitle("Scatter Plot of Rating v.s. Size") +
+  xlab("Size (MB)"); scat.rating.size
+```
+
+The scatter plot obviously shows that the bigger the sizes of the applications are, the higher the user ratings they have. This relationship may worth trying using regression models to analyze it.
+
+```{r bar chart of content rating, echo=FALSE, warning=FALSE, message=FALSE}
+# bar chart of content rating
+barplot.content <-ggplot(data=app.df, aes(x=Content.Rating)) +
+  geom_bar(stat="count", fill="steelblue") + ggtitle("Bar chart of Content Rating") +
+  theme(axis.text.x=element_text(angle=50, hjust = 1)); barplot.content
+```
+
+The bar chart shows that most of the applications' content is for everyone, and only very few applications are rated Adults Only or Unrated.
+
+```{r boxplot of rating vs content rating, echo=FALSE, message=FALSE, warning=FALSE}
+# boxplot of rating vs content rating
+boxp.rating.content <- ggplot(data=app.df, aes(x=Content.Rating,y=Rating)) +
+  geom_boxplot() + ggtitle("Box Plot of Rating v.s. Content.Rating") +
+  theme(axis.text.x=element_text(angle=50, hjust = 1)); boxp.rating.content
+```
+
+The box plot above implies that there is no obvious difference in user ratings between different content ratings. The content ratings of Adults only 18+ and Unrated have almost no outliers in the box plot, but it is because very few applications are rated in these 2 levels; I can observe that from the previous bar chart of content rating.
+
+```{r histogram of days from last update, echo=FALSE, warning=FALSE, message=FALSE, fig.width = 6, fig.height = 3.8}
+# histogram of days from last update (< 500 days)
+hist.lastUpdate <- ggplot(data=app.df, aes(x=DaysFromLastUpdate)) +
+  geom_histogram(stat="count", fill="steelblue") + 
+  ggtitle("Histogram of Days From Last Update") + xlab("Days From Last Update") +
+  scale_x_continuous(limits = c(0,500)); hist.lastUpdate
+```
+
+After data processing, the field DaysFromLastUpdate has a wide range of data. A portion of applications' last update dates is more than 2000 days ago, which were more than 5 years. Many of these applications are very likely to be out-dated and no longer compatible with current mobile devices. Therefore, I focus on applications whose last update dates within 500 days ago.
+From the histogram of rating, I can tell that a large part of applications was updated less than 100 days ago. This may indicate that many applications are updated frequently.
+
+```{r scatter plot of rating vs days from last update, echo=FALSE, warning=FALSE, message=FALSE, fig.width = 6, fig.height = 3.8}
+# scatter plot of rating vs days from last update (< 500 days)
+scat.rating.lastUpdate <- ggplot(data=app.df, aes(x=DaysFromLastUpdate,y=Rating)) +
+  geom_point() + ggtitle("Scatter Plot of Rating v.s. Days From Last Update") + 
+  xlab("Days From Last Update") +
+  scale_x_continuous(limits = c(0,500)); scat.rating.lastUpdate
+```
+ 
+There is a very dense part in the top left corner of the scatter plot, implying that a part of applications that are updated frequently has good user ratings.
+
+## Multiple Regression
+
+I have gained some understanding of the dataset from the previous part. Next, I will use multiple regression models to analyze the data and know more about what the features of a well-rated are.
+I first attempt to manually select variables for the regression model and then apply some variable selection strategies to select variables.
+
+### Manual Variable Selection
+
+```{r eval=FALSE, echo=TRUE}
+formula = Rating ~ log(Reviews) + Size + log(Installs) + Price + 
+  Genres + DaysFromLastUpdate
+```
+
+```{r message=FALSE, warning=FALSE, echo=FALSE, fig.width = 6, fig.height = 4.5}
+require(Sleuth3)
+require(mosaic)
+lm1 = lm(Rating ~ log(Reviews) + Size + log(Installs) + Price + 
+            Genres + DaysFromLastUpdate, data=app.df)
+plot(lm1, which=1)
+```
+
+In the beginning, I used the formula with all independent variables. Then I removed the insignificant ones and doing log transformations. After those steps, I got the summary of the model and its scatter plot of residuals v.s. fitted values. The complete summary of this model is shown in **Appendix 7.2**. During the process, I removed _Content Rating_ because this variable is not significant in the model. _Category_ is also removed because no category has a significant effect on the model. On the other hand, I keep _Genres_ because the result shows that some genres' coefficients' p-values are extremely small (<0.001), meaning it is significant that those genres have an influence on user ratings. 
+In addition, because the ranges of _Reviews_ and _Installs_ are considerably big, I performed log transformations for _Reviews_ and _Installs_ and then ran the model. The model has slightly higher R-Square (although it is still very small), slightly smaller residual standard error.
+
+
+Next, I will apply 3 variable selection techniques based on Akaike Information Criterion (AIC): _Forward Selection_, _Backward Elimination_, and _Stepwise Selection_.
+
+### Forward Selection
+After running Forward Selection in R, the formula I got is:
+```{r eval=FALSE, echo=TRUE}
+formula = Rating ~ log(Reviews) + log(Installs) + Category + 
+  DaysFromLastUpdate + Size + Price
+```
+
+The complete process of Forward Selection is in **Appendix 7.3**.
+
+### Backward Elimination
+After running Backward Elimination in R, the formula I got is:
+```{r eval=FALSE, echo=TRUE}
+formula = Rating ~ Category + log(Reviews) + Size + log(Installs) + Price +
+  DaysFromLastUpdate
+```
+
+The complete process of Backward Elimination is in **Appendix 7.4**.
+
+
+
+### Stepwise Selection
+
+After running Stepwise Selection in R, the formula I got is:
+```{r eval=FALSE, echo=TRUE}
+formula = Rating ~ log(Reviews) + log(Installs) + Category +
+  DaysFromLastUpdate + Size + Price
+```
+
+The complete process of Stepwise Selection is in **Appendix 7.5**.
+
+The formulas obtained from 3 variable selection techniques are the same. I use this formula to fit the data and get a summary of the regression model:
+
+```{r warning=FALSE, echo=FALSE, fig.width = 6, fig.height = 4.5}
+# result of forward selection
+lm2 = lm(formula = Rating ~ log(Reviews) + log(Installs) + Category + 
+           DaysFromLastUpdate + Size + Price, data = app.df)
+summary(lm2)
+plot(lm2, which=1)
+```
+
+The scatter plot of residuals v.s. fitted values shows that although the points do not seem to spread randomly, the red line is quite close to the line of 0. From this point of view, the model is not bad; however, the R-Square is extremely low (0.1633), indicating this model is still not a good fit.
+Compared to the regression model whose variables were selected manually, the regression model using the formula gained by the variable selection approaches above has higher R-Square (0.1633 > 0.09317), although it is still very low. The latter model also has slightly lower residual standard error than the former. Thus, I conclude that the latter model is the better one and will use it for further discussion. 
+Nevertheless, the model's R-Square and Adjusted R-Square are both very low; it may imply that there are still many factors influencing an application's user rating but not included in the dataset. Some of the factors may even be difficult to be quantified or categorized. 
+
+Next, I will inspect the coefficients of variables in the model. The Intercept, which can be regarded as the base value, is 4.886. Considering the highest rating possible is 5.0, 4.886 is a very high rating score. This may also explain why most variables' coefficients are negative: the model sets a very high base value of the rating score of an application, and this value will be reduced by most of the other variables to its final rating. 
+Besides the _Intercept_, other variables which are significant in the model are listed below:
+
+
+Variable     | Estimate Coefficient 
+------------ | -------------------
+log(Review) | 0.157
+log(Installs)  | -0.1379
+DaysFromLastUpdate | -0.0001583
+Size | -0.001117
+Price | -0.001034
+Category: AUTO_AND_VEHICLES | -0.1727
+Category: BUSINESS | -0.266
+Category: COMICS | -0.3084
+Category: COMMUNICATION | -0.3301
+Category: DATING | -0.481
+Category: ENTERTAINMENT | -0.3887
+Category: FAMILY | -0.2129
+Category: FINANCE | -0.3123
+Category: FOOD_AND_DRINK | -0.2876
+Category: GAME | -0.2281
+Category: HEALTH_AND_FITNESS | -0.1978
+Category: HOUSE_AND_HOME | -0.2162
+Category: LIFESTYLE | -0.2781
+Category: MAPS_AND_NAVIGATION | -0.3828
+Category: MEDICAL | -0.1757
+Category: NEWS_AND_MAGAZINES | -0.3227
+Category: PHOTOGRAPHY | -0.2703
+Category: PRODUCTIVITY | -0.217
+Category: SHOPPING | -0.224
+Category: SOCIAL | -0.269
+Category: SPORTS | -0.2723
+Category: TOOLS | -0.3318
+Category: TRAVEL_AND_LOCAL | -0.2916
+Category: VIDEO_PLAYERS | -0.3392
+Category: WEATHER | -0.2349
+
+For all coefficients above, their absolute values are smaller than 0.5, which is a very small scale. This is because the scale of the dependent variable, Rating, is small; it is only from 1 to 5. Thus, this makes the coefficients of independent variables very small. Some variables include very big values, e.g. _DaysFromLastUpdate_, and that makes their coefficients even smaller.
+
+_log(Reviews)_'s coefficient is 0.157, indicating the number of reviews has a positive effect on the user rating. The more reviews an application has, the more likely it has a good rating. 
+On the other hand, it is not intuitive that _log(Installs)_ has a negative coefficient. What I expected was that the more installs of an application mean that it was more popular, so it should have a better user rating. But the negative coefficient may be able to explain why the applications which have more than 1,000,000,000 installs don't have user ratings above 4.5. It is possible that as an application has a great number of users, there are usually some people who are not satisfied. This also implies that user ratings may not always be the best standard to evaluate an application: it is because a popular application should be considered successful, but the most popular applications generally don't have very high ratings.
+
+The attribute _DaysFromLastUpdate_ which represents the number of days from the date of the last update also has a negative coefficient. Evaluating this model, I want an attribute that can represent how frequent an application is being updated. Considering the data I want, _DaysFromLastUpdate_ is not the ideal field for it. I need the data of each application's previous update date and calculate the average update period for analysis.
+_Size_ and _Price_ both have a negative coefficient very close to 0. Although these two variables are significant in the summary of the model, they can be regarded as no effect on user ratings because the coefficients are very close to 0.
+
+Furthermore, all coefficients in the attribute _Category_ are negative. Hence, generally, the categories have lower coefficients are harder to get better user ratings. From the table above, DATING is the category with the lowest coefficient, meaning that this category has lower ratings in general. Besides DATING, MAPS_AND_NAVIGATION and ENTERTAINMENT also have lower coefficients than others. So, I know that these three categories generally have lower ratings than others. This can be the case that users are more sensitive to these kinds of applications; for example, users may be more likely to get mad and give low ratings if a navigation application leads them to a wrong place than a news application with out-dated news.
+
+Compared with other categories, AUTO_AND_VEHICLES and MEDICAL have higher coefficients, meaning that they usually have higher ratings than other categories. 
+
+## Inferential Tools for Multiple Regression
+
+The 95% confidence intervals of independent variables of the regression model:
+```{r warning=FALSE, echo=FALSE}
+confint(lm2)
+```
+
+The confidence intervals of regression model coefficients provide the range of each variable's effect on user rating. For example, DATING's 95% confidence interval is (-0.616, -0.346), which is a wide range considering the range of user ratings is only (1, 5). Although the confidence intervals show us to what degree these variables can affect user ratings, it still doesn't make predicting or interpreting user ratings easier.
+
+
+# Conclusions
+
+Generally, predicting whether an application has a good rating based on attributes such as prices, sizes, numbers of installs, and days from the last update is difficult; even though these variables are significant in the model. The low R-Square value reflects this situation. But from the analysis, an app with more reviews is more likely to have a higher rating. Besides that, some categories such as AUTO_AND_VEHICLES and MEDICAL which have higher coefficients in the regression model tend to have higher ratings than other categories, while DATING, MAPS_AND_NAVIGATION, and ENTERTAINMENT tend to have lower ratings than others because of lower coefficients in the model.
+
+The difference between manually selecting variables and 3 variable selection methods demonstrates that the variable selection techniques do a better job on forming formulas since the techniques involves criteria such as AIC in it and are more sophisticated than manual selection. 
+
+
+
+# References
+Ramsey, F.L., & Schafer, D.W. (2013). _The statistical sleuth: A Course in Methods of Data Analysis_ (3rd ed). Boston, MA: Brooks/Cole.
+
+Pimentel, H., Bray, N., Melsted, P., & Pachter, L. (2015). _Sleuth package | R Documentation_. Retrieved from [https://www.rdocumentation.org/packages/sleuth/versions/0.27.3]
+
+
+
+# Appendix
+## R Code of Data Cleaning and Processing
+```{r eval=FALSE, echo=TRUE}
+## Data cleaning and processing
+
+pp.df <- data.frame(stringsAsFactors = FALSE)
+app.df <- read.csv("google-play-store-apps/googleplaystore.csv")
+View(app.df)
+# delete the row with problematic data
+app.df <- app.df[-c(10473),]
+
+library(stringr)
+library(naniar)
+# cleaning Size: get rid of "M" or "k", 
+# replace "Varies with device" with mean of size in each category,
+# and turn numeric
+
+# first, replace "Varies with device" with N/A (and replace it with mean later)
+app.df <- replace_with_na(app.df, replace=list(Size=c("Varies with device")))
+
+# remove the unit (M or k), make this columns numeric and use M as the unit
+size.temp <- as.character(app.df$Size)
+for(i in 1:length(size.temp))
+{
+  if (is.na(size.temp[i]))
+  {
+    next
+  }
+  else if(str_sub(size.temp[i], -1, -1) == "M")
+  {
+    size.temp[i] <- str_sub(size.temp[i], end=-2)
+  }
+  else if (str_sub(size.temp[i], -1, -1) == "k")
+  {
+    size.temp[i] <- str_sub(size.temp[i], end=-2)
+    size.temp[i] <- as.numeric(size.temp[i])/1024
+  }
+  else if (str_sub(size.temp[i], -1, -1) == "+")
+  {
+    size.temp[i] <- str_sub(size.temp[i], end=-2)
+  }
+}
+size.temp <- as.numeric(size.temp)
+
+df.temp <-app.df
+df.temp$Size <-  size.temp
+
+# calculate the mean size value of each category
+size.meanByCatg <- aggregate(Size ~ Category, df.temp, FUN=mean)
+
+# replace N/A (originally Varies with device) with the mean size value of each category
+for(i in 1:nrow(df.temp))
+{
+  if (is.na(df.temp[i,]$Size))
+  {
+    df.temp[i,]$Size <- size.meanByCatg[size.meanByCatg$Category==df.temp[i,]$Category,]$Size
+  }
+}
+app.df <- df.temp
+app.df$Size <- round(app.df$Size, digits = 3)
+
+View(app.df$Installs)
+# cleaning installs: get rid of "+", and turn numeric
+install.temp <- as.character(app.df$Installs)
+for (i in 1:length(install.temp))
+{
+  if(str_sub(install.temp[i], -1, -1) == "+")
+  {
+    install.temp[i] <- str_sub(install.temp[i], end=-2)
+  }
+}
+View(install.temp)
+app.df$Installs <-install.temp
+app.df$Installs <- as.numeric(gsub(",","",app.df$Installs))
+
+# cleaning price: remove "$", and turn numeric
+price.temp <- as.character(app.df$Price)
+for (i in 1:length(price.temp))
+{
+  if(str_sub(price.temp[i], 1, 1) == "$")
+  {
+    price.temp[i] <- str_sub(price.temp[i], start=2, end=-1)
+  }
+}
+app.df$Price <- as.numeric(price.temp)
+
+# transform the Last.Updated column into date type
+app.df$Last.Updated <- as.Date(app.df$Last.Updated, format="%B %d, %Y")
+max(app.df$Last.Updated) # 2018-08-08 (the lastest updated date of all apps)
+
+# add a column "DaysFromLastUpdate"
+#(assume today is the day of the lastest updated date of all apps in the dataset (2018-08-08))
+app.df$DaysFromLastUpdate <- as.Date("2018-08-08") - as.Date(app.df$Last.Updated, format="%B %d, %Y")
+
+# turn Reviews into numeric
+app.df$Reviews <- as.numeric(as.character(app.df$Reviews))
+
+# output data frame to csv file
+write.csv(app.df, "apps.csv")
+```
+
+## Regression Model Summary of Manual-Selected Formula
+```{r echo=FALSE, warning=FALSE}
+lm1 = lm(Rating ~ log(Reviews) + Size + log(Installs) + Price + 
+            Genres + DaysFromLastUpdate, data=app.df)
+summary(lm1)
+```
+
+## Forward Selection
+```{r echo=FALSE, warning=FALSE}
+# Define the smallest model
+smallest <- Rating~ 1
+# Define the biggest model
+biggest <- Rating ~ Category + log(Reviews) + Size + log(Installs) + Price + 
+  Content.Rating + Genres + DaysFromLastUpdate
+# define the model to start
+m <- lm(Rating ~ 1, data=app.df)
+# it does forward selection of the variables for us
+stats::step(m, scope=list(lower=smallest, upper=biggest)) 
+```
+
+## Backward Elimination
+```{r echo=FALSE, warning=FALSE}
+# Define the biggest model
+biggest <- Rating ~ Category + log(Reviews) + Size + log(Installs) + Price + 
+  Content.Rating + Genres + DaysFromLastUpdate
+m <- lm(biggest, data=app.df)
+# it does backward selection of the variables for us
+stats::step(m, direction="backward") 
+```
+
+## Stepwise Selection
+```{r echo=FALSE, warning=FALSE}
+# Define the smallest model
+smallest <- Rating~ 1
+# Define the biggest model
+biggest <- Rating ~ Category + log(Reviews) + Size + log(Installs) + Price + 
+  Content.Rating + Genres + DaysFromLastUpdate
+# define the model to start
+m <- lm(Rating~ 1, data=app.df)
+# it does stepwise selection of the variables for us
+stats::step(m, scope=list(lower=smallest, upper=biggest), direction="both")
+```

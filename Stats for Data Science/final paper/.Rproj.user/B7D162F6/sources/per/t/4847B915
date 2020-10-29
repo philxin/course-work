@@ -1,0 +1,26 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1574995684874.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "1588689911",
+    "id" : "4847B915",
+    "lastKnownWriteTime" : 1575506145,
+    "last_content_update" : 1575506145704,
+    "path" : "~/OneDrive - The University of Texas at Dallas/UTD school works/Stats for Data Science/final paper/R code/analysis.r",
+    "project_path" : "R code/analysis.r",
+    "properties" : {
+        "cursorPosition" : "102,0",
+        "scrollLine" : "92",
+        "tempName" : "Untitled1"
+    },
+    "read_only" : false,
+    "read_only_alternatives" : [
+    ],
+    "relative_order" : 6,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_source"
+}

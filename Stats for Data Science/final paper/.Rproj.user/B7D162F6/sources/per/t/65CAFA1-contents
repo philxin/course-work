@@ -1,0 +1,112 @@
+library("readxl")
+library(rpart)
+library(rpart.plot)
+library(caret)
+library(data.table)  
+library(neuralnet)
+invoice.df<- read_excel("invoices.xlsx")
+View(invoice.df)
+summary(invoice.df)
+invoice.df <- invoice.df[!(invoice.df$TotalAmount<=0 | invoice.df$TotalQuantity<=0),]
+
+invoice.df$InNovDec <- ifelse(invoice.df$Month==11 | invoice.df$Month==12, TRUE, FALSE)
+invoice.df$AmountMoreThanOrEqual18 <-ifelse(invoice.df$TotalAmount >= 18, TRUE, FALSE)
+invoice.df$Month <- factor(invoice.df$Month)
+invoice.df$Month <- as.numeric(invoice.df$Month)
+typeof(invoice.df$Month)
+#192
+train.index <- sample(c(1:dim(invoice.df)[1]), dim(invoice.df)[1]*0.8)
+train.df <- invoice.df[train.index, ]
+valid.df <- invoice.df[-train.index, ]
+#nrow(train.df[train.df$FromUK == TRUE,])
+# TotalAmount ~ NumProductType + TotalQuantity + InNovDec
+# InNovDec ~ NumProductType + TotalAmount + TotalQuantity
+
+default.ct <- rpart(AmountMoreThanOrEqual18 ~ NumProductType + TotalQuantity + Month, data = train.df ,method = "class")
+prp(default.ct, type = 1, extra = 2, under = TRUE, split.font = 1, varlen = -10)
+title("Invoice Total Amount >= 104")
+
+confusionMatrix(as.factor(ifelse(train.df$NumProductType < 134, FALSE, 
+                  ifelse(train.df$NumProductType < 164, 
+                  ifelse(train.df$Month=="9"|train.df$Month=="10"|train.df$Month=="11", FALSE, TRUE), TRUE))),
+                          as.factor(train.df$AmountMoreThanOrEqual500))
+
+confusionMatrix(as.factor(ifelse(train.df$NumProductType < 7, 
+                                  ifelse(train.df$NumProductType < 5, FALSE, 
+                                         ifelse(train.df$TotalQuantity >= 54, FALSE, TRUE)), TRUE))
+                , as.factor(train.df$AmountMoreThanOrEqual18))
+
+
+confusionMatrix(as.factor(ifelse(valid.df$NumProductType < 36, FALSE, TRUE)),
+                as.factor(valid.df$AmountMoreThanOrEqual104))
+
+#confusionMatrix(as.factor(ifelse(train.df$NumProductType < 132, FALSE, 
+#                                 ifelse(train.df$NumProductType < 158, 
+#                                        ifelse(train.df$Month=="1"|train.df$Month=="7"|train.df$Month=="9"|train.df$Month=="10"|train.df$Month=="11", FALSE, TRUE), TRUE))),
+#                as.factor(train.df$AmountMoreThanOrEqual473))
+
+#confusionMatrix(as.factor(ifelse(valid.df$NumProductType < 132, FALSE, 
+#                                 ifelse(valid.df$NumProductType < 158, 
+#                                        ifelse(valid.df$Month=="1"|valid.df$Month=="7"|valid.df$Month=="9"|valid.df$Month=="10"|valid.df$Month=="11", FALSE, TRUE), TRUE))),
+#                as.factor(valid.df$AmountMoreThanOrEqual473))
+
+# neural network
+invoice.df$NotInNovDec <- invoice.df$InNovDec == FALSE
+invoice.df$AmountLessThan18 <- invoice.df$AmountMoreThanOrEqual18 == FALSE
+
+# one more hidden 
+nn0 <- neuralnet(AmountMoreThanOrEqual18 + AmountLessThan18 ~ NumProductType + TotalQuantity + Month, data = invoice.df,
+                 linear.output = F, hidden = 3, stepmax = 1e+06)
+
+nn1 <- neuralnet(InNovDec + NotInNovDec~ NumProductType + TotalAmount + TotalQuantity, data = invoice.df,
+                 linear.output = F, hidden = 7, stepmax = 1e+07)
+# display weights
+nn0$weights
+
+# display predictions
+prediction(nn0)
+
+# plot network
+plot(nn0, rep="best")
+
+predict <- compute(nn0, data.frame(invoice.df$NumProductType, invoice.df$TotalQuantity, invoice.df$Month)) 
+predict$net.result
+predicted.class=apply(predict$net.result, 1, which.max)-1 
+View(predicted.class)
+
+confusionMatrix(as.factor(ifelse(predicted.class=="0", TRUE, FALSE)), as.factor(invoice.df$AmountMoreThanOrEqual18))
+table(ifelse(predicted.class=="0", TRUE, FALSE), invoice.df$AmountMoreThanOrEqual500)
+
+
+# logistic regression model
+# run logistic regression
+logit.reg <- glm(InNovDec ~ NumProductType + TotalAmount + TotalQuantity
+                 , data = train.df)
+options(scipen=999)
+summary(logit.reg)
+
+
+# Q2 (l)
+
+# use predict() with type = "response" to compute predicted probabilities. 
+# predict and show confusion matrix with training dataset
+logit.reg.pred.train <- predict(logit.reg, train.df, type = "response")
+confusionMatrix(as.factor(ifelse(logit.reg.pred.train>0.5, 1, 0)), 
+                as.factor(train.df$InNovDec))
+
+# predict and show confusion matrix with validation dataset
+logit.reg.pred.valid <- predict(logit.reg, valid.df, type = "response")
+confusionMatrix(as.factor(ifelse(logit.reg.pred.valid>0.5, 1, 0)), 
+                as.factor(valid.df$InNovDec))
+
+
+# Q2 (m)
+library(pROC)
+
+# ROC curve of logistic regression model
+roc_logit <- roc(valid.df$TargetBuy, as.numeric(ifelse(logit.reg.pred.valid>0.5, 1, 0)))
+plot.roc(roc_logit)
+# compute auc (area under the curve)
+auc(roc_logit)
+
+
